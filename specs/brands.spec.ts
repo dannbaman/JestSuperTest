@@ -88,7 +88,58 @@ describe('Create and Fetch Brands', () => {
         expect(typeof response.body).toBe("object");
         expect(response.body.name).toContain(newBrand);
     });
-    }); // Closing `describe` block
+    it('Schema Validation: name is mandatory field', async () => {
+        const data = {
+            'name': '',
+            description: "This is a new brand"
+        };        
+        const response = await request.post('/brands').send(data); 
+        expect(response.status).toBe(422); 
+        expect(response.body.error).toEqual('Name is required');       
+        
+    }); 
+    it('Schema Validation: Min char length for name >1', async () => {
+        const data = {
+            'name': 'a',
+            description: "This is a new brand"
+        };        
+        const response = await request.post('/brands').send(data); 
+        expect(response.status).toBe(422);     
+        console.log("Response Body:", response.body); // Debugging output
+        expect(response.body.error).toEqual('Brand name is too short');
+    }); 
+    it('Business Logic: Duplicate brand entries are not allowed', async () => {
+        const data = {
+            'name': newBrand
+        };        
+        const response = await request.post('/brands').send(data); 
+        expect(response.status).toBe(200);     
+        console.log("Response Body:", response.body); // Debugging output
+
+        const response1 = await request.post('/brands').send(data); 
+        expect(response1.status).toBe(422);     
+        console.log("Response Body:", response1.body); // Debugging output
+        expect(response1.body.error).toContain('already exists');
+    }); 
+    it('Business Logic: Name cant be too long', async () => {
+        const data = {
+            'name': "This is a really long brand name"
+        };        
+        const response = await request.post('/brands').send(data);  
+        console.log("Response Body:", response.body); // Debugging output
+        expect(response.body.error).toContain('too long');
+    }); 
+    it('Business Logic: Description must be a string', async () => {
+        const data = {
+            'name': "Naked Brand",
+            description: 12345
+        };        
+        const response = await request.post('/brands').send(data);
+        expect(response.status).toBe(422);   
+        console.log("Response Body:", response.body); // Debugging output
+        expect(response.body.error).toContain('must be a string');
+    }); 
+});
 describe('Update Brands', () => {
 it('PUT /brands/:id', async () => {
     const data = {
@@ -107,6 +158,22 @@ it('PUT /brands/:id', async () => {
     expect(typeof response.body).toBe("object");
     expect(response.body.name).toBe(data.name);
 }); // Closing `it` block
+
+it('PUT /brands/invalid id', async () => {
+    const data = {
+        name: newBrand + 'updated',
+    };
+
+    const response = await request.put('/brands/'+123).send(data);
+    
+    console.log("Response Status:", response.status);
+    console.log("Response Body:", response.body); // Debugging output
+
+    // Ensure API response is successful
+    expect(response.status).toBe(422);
+    expect(response.body.error).toEqual("Unable to update brands");
+}); // Closing `it` block
+});
 describe('Delete Brands',()=>{
     it('Delete /brands/:id', async () => {
         const response = await request.delete('/brands/'+ brandID);
@@ -121,6 +188,15 @@ describe('Delete Brands',()=>{
         expect(typeof response.body).toBe("object");
         expect(response.body).toEqual(null);
     });
+    it('Delete /brands/ inavlid id', async () => {
+        const response = await request.delete('/brands/'+ 123);
+        
+        console.log("Response Status:", response.status);
+        console.log("Response Body:", response.body); // Debugging output
+    
+        // Ensure API response is successful
+        expect(response.status).toBe(422);
+        expect(response.body.error).toEqual("Unable to delete brand");
+    });
 })
 }); 
-});
